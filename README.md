@@ -67,15 +67,21 @@ The last term requires JVP through the network — implemented via custom Triton
 
 ## Benchmarks
 
-| Config | TTFT (p95) | GPU RAM | FID | Throughput |
-|--------|-----------|---------|-----|------------|
-| vLLM baseline | 1240ms | 21GB | — | 12 req/s |
-| SGLang RadixAttention | 580ms | 7GB | — | 31 req/s |
-| + TVM 4-step | 580ms | 7GB | 2.1 | 31 req/s |
-| + TVM 1-step (spike) | 180ms | 5GB | 4.6 | 94 req/s |
+The repo currently ships the kernel microbenchmark in `kernels/benchmarks.py`.
+The table below reports actual measured p95 latency, throughput, and peak VRAM
+from that benchmark on a single NVIDIA RTX 3090 (`HEAD_DIM=64`, `BLOCK_SIZE=64`,
+`warmup=20`, `iters=200`).
 
-**60% KV cache VRAM overhead reduction vs baseline.**
-Hardware: NVIDIA RTX 4090 + RTX 3090.
+| Seq Len | Triton p95 (ms) | PyTorch p95 (ms) | Triton Throughput (ops/s) | PyTorch Throughput (ops/s) | Triton VRAM (MB) | PyTorch VRAM (MB) | Speedup | VRAM Reduction |
+|---------|-----------------|------------------|---------------------------|----------------------------|------------------|-------------------|---------|----------------|
+| 256 | 0.06 | 1.05 | 17788.78 | 1366.35 | 0.2 | 10.1 | 13.10x | 97.5% |
+| 512 | 0.08 | 1.11 | 13244.61 | 1328.07 | 9.0 | 14.5 | 10.23x | 37.9% |
+| 1024 | 0.11 | 1.13 | 9347.26 | 1256.94 | 9.9 | 30.9 | 7.27x | 68.0% |
+| 2048 | 0.16 | 1.90 | 6643.97 | 760.66 | 11.6 | 93.6 | 7.45x | 87.6% |
+| 4096 | 0.27 | 4.57 | 3829.28 | 242.99 | 15.1 | 339.2 | 15.72x | 95.5% |
+
+**95.5% peak VRAM reduction at seq len 4096 vs the PyTorch SDPA+jvp baseline.**
+Hardware: NVIDIA RTX 3090.
 
 ---
 
@@ -132,7 +138,7 @@ docker-compose up
 helm install cloud-inference ./deploy/helm
 
 # Run benchmarks
-python -m serving.benchmarks --backend sglang --load-test concurrent
+python -m kernels.benchmarks
 ```
 
 ---

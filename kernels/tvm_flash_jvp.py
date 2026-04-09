@@ -16,6 +16,8 @@ Implementation:
 Targets: 65% speedup vs naive PyTorch SDPA, major VRAM reduction
 Validate: amorehead/jvp_flash_attention
 """
+import math
+
 import triton
 import triton.language as tl
 import torch
@@ -54,7 +56,9 @@ def flash_attention_jvp_kernel(
     q_block = tl.load(q_ptrs, mask=offs_m[:, None] < N_CTX, other=0.0)
     tq_block = tl.load(tq_ptrs, mask=offs_m[:, None] < N_CTX, other=0.0)
 
-    scale = 1.0 / tl.sqrt(HEAD_DIM.to(tl.float32))
+    # HEAD_DIM is a constexpr Python int inside Triton JIT, so compute the
+    # scale as a Python constant instead of calling tensor methods on it.
+    scale = 1.0 / math.sqrt(HEAD_DIM)
 
     # Running accumulators (online softmax + tangent)
     m_i = tl.full([BLOCK_M], value=-float("inf"), dtype=tl.float32)  # row-max

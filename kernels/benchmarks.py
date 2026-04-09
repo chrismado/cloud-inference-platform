@@ -14,11 +14,13 @@ from __future__ import annotations
 
 import argparse
 import gc
+import math
 import sys
 from functools import partial
 
 import torch
 import torch.nn.functional as F
+from torch.nn.attention import SDPBackend, sdpa_kernel
 
 from kernels.tvm_flash_jvp import flash_attention_jvp
 
@@ -49,11 +51,14 @@ def _pytorch_sdpa_jvp(q, k, v, tq, tk, tv):
     """Naive baseline: SDPA forward + torch.func.jvp for tangent."""
     # SDPA expects (batch, heads, seq, dim) — unsqueeze to (1, 1, N, D).
     def _sdpa_fn(q_, k_, v_):
-        return F.scaled_dot_product_attention(
-            q_.unsqueeze(0).unsqueeze(0),
-            k_.unsqueeze(0).unsqueeze(0),
-            v_.unsqueeze(0).unsqueeze(0),
-        ).squeeze(0).squeeze(0)
+        # Force the math backend because the fused CUDA SDPA kernels do not
+        # currently expose the forward AD needed by torch.func.jvp.
+        with sdpa_kernel([SDPBackend.MATH]):
+            return F.scaled_dot_product_attention(
+                q_.unsqueeze(0).unsqueeze(0),
+                k_.unsqueeze(0).unsqueeze(0),
+                v_.unsqueeze(0).unsqueeze(0),
+            ).squeeze(0).squeeze(0)
 
     out, tout = torch.func.jvp(_sdpa_fn, (q, k, v), (tq, tk, tv))
     return out, tout
@@ -62,7 +67,7 @@ def _pytorch_sdpa_jvp(q, k, v, tq, tk, tv):
 # ── benchmark runner ───────────────────────────────────────────────────
 
 def _bench_fn(fn, warmup: int, iters: int, device: torch.device):
-    """Time *fn* and return (median_ms, peak_vram_mb)."""
+    """Time *fn* and return summary latency, throughput, and VRAM metrics."""
     # Warmup
     for _ in range(warmup):
         fn()
@@ -84,7 +89,11 @@ def _bench_fn(fn, warmup: int, iters: int, device: torch.device):
     vram = _peak_vram_mb(device)
     times.sort()
     median_ms = times[len(times) // 2]
-    return median_ms, vram
+    p95_index = max(0, math.ceil(len(times) * 0.95) - 1)
+    p95_ms = times[p95_index]
+    mean_ms = sum(times) / len(times)
+    throughput_ops_s = 1000.0 / mean_ms if mean_ms > 0 else float("inf")
+    return median_ms, p95_ms, throughput_ops_s, vram
 
 
 def run_benchmark(
@@ -107,14 +116,18 @@ def run_benchmark(
 
         # --- Triton fused kernel ---
         triton_fn = partial(flash_attention_jvp, q, k, v, tq, tk, tv)
-        triton_ms, triton_vram = _bench_fn(triton_fn, warmup, iters, device)
+        triton_ms, triton_p95_ms, triton_throughput, triton_vram = _bench_fn(
+            triton_fn, warmup, iters, device
+        )
 
         # --- PyTorch SDPA + jvp baseline ---
         # Need float32 for torch.func.jvp
         q32, k32, v32 = q.float(), k.float(), v.float()
         tq32, tk32, tv32 = tq.float(), tk.float(), tv.float()
         pytorch_fn = partial(_pytorch_sdpa_jvp, q32, k32, v32, tq32, tk32, tv32)
-        pytorch_ms, pytorch_vram = _bench_fn(pytorch_fn, warmup, iters, device)
+        pytorch_ms, pytorch_p95_ms, pytorch_throughput, pytorch_vram = _bench_fn(
+            pytorch_fn, warmup, iters, device
+        )
 
         speedup = pytorch_ms / triton_ms if triton_ms > 0 else float("inf")
         vram_reduction = (1 - triton_vram / pytorch_vram) * 100 if pytorch_vram > 0 else 0
@@ -122,7 +135,11 @@ def run_benchmark(
         rows.append({
             "n_ctx": n_ctx,
             "triton_ms": triton_ms,
+            "triton_p95_ms": triton_p95_ms,
+            "triton_throughput": triton_throughput,
             "pytorch_ms": pytorch_ms,
+            "pytorch_p95_ms": pytorch_p95_ms,
+            "pytorch_throughput": pytorch_throughput,
             "speedup": speedup,
             "triton_vram": triton_vram,
             "pytorch_vram": pytorch_vram,
@@ -136,18 +153,26 @@ def run_benchmark(
     print(f"Warmup={warmup}  Iters={iters}\n")
 
     # Markdown table for README
-    header = "| Seq Len | Triton JVP (ms) | PyTorch SDPA+jvp (ms) | Speedup | Triton VRAM (MB) | PyTorch VRAM (MB) | VRAM Reduction |"
-    sep    = "|---------|-----------------|----------------------|---------|------------------|-------------------|----------------|"
+    header = (
+        "| Seq Len | Triton p95 (ms) | PyTorch p95 (ms) | Triton Throughput (ops/s) "
+        "| PyTorch Throughput (ops/s) | Triton VRAM (MB) | PyTorch VRAM (MB) | Speedup | VRAM Reduction |"
+    )
+    sep = (
+        "|---------|-----------------|------------------|---------------------------|"
+        "----------------------------|------------------|-------------------|---------|----------------|"
+    )
     print(header)
     print(sep)
     for r in rows:
         print(
             f"| {r['n_ctx']:>7} "
-            f"| {r['triton_ms']:>15.2f} "
-            f"| {r['pytorch_ms']:>20.2f} "
-            f"| {r['speedup']:>6.2f}x "
+            f"| {r['triton_p95_ms']:>15.2f} "
+            f"| {r['pytorch_p95_ms']:>16.2f} "
+            f"| {r['triton_throughput']:>25.2f} "
+            f"| {r['pytorch_throughput']:>26.2f} "
             f"| {r['triton_vram']:>16.1f} "
             f"| {r['pytorch_vram']:>17.1f} "
+            f"| {r['speedup']:>6.2f}x "
             f"| {r['vram_reduction']:>13.1f}% |"
         )
 
