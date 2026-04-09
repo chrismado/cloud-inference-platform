@@ -15,16 +15,19 @@ Usage::
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
+logger = logging.getLogger(__name__)
+
 try:
-    import pynvml
+    import pynvml  # nvidia-ml-py (aliased as pynvml)
 
     pynvml.nvmlInit()
     _NVML_AVAILABLE = True
-except Exception:
+except Exception:  # ImportError or NVMLError on CPU-only machines
     _NVML_AVAILABLE = False
 
 

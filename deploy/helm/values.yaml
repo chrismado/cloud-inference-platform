@@ -37,6 +37,13 @@ autoscaling:
 nodeSelector:
   nvidia.com/gpu.present: "true"
 
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: inference.example.com
+  tls: []
+
 tolerations:
   - key: nvidia.com/gpu
     operator: Exists

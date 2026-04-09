@@ -111,7 +111,7 @@ cloud-inference-platform/
 │   └── slo_tracker.py         # SLO compliance tracking
 ├── deploy/
 │   ├── helm/                  # Kubernetes Helm chart
-│   ├── docker-compose.yml     # Local dev setup
+│   ├── docker-compose.yaml    # Local dev setup
 │   └── Dockerfile
 ├── tests/
 │   ├── test_router.py
@@ -138,7 +138,7 @@ docker-compose up
 helm install cloud-inference ./deploy/helm
 
 # Run benchmarks
-python -m kernels.benchmarks
+python -m kernels.benchmarks --seq-len 1024 --head-dim 64
 ```
 
 ---

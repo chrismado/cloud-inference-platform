@@ -8,6 +8,9 @@ Usage::
 
     locust -f tests/locust_load_test.py --host http://localhost:8080
     python tests/locust_load_test.py  # quick smoke test
+
+NOTE: This module is intentionally excluded from pytest discovery to avoid
+gevent/SSL conflicts.  Run it directly or via ``locust -f``.
 """
 from __future__ import annotations
 
