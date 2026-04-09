@@ -143,6 +143,15 @@ python -m kernels.benchmarks
 
 ---
 
+## What I Learned
+
+- **Flash Attention still needs explicit JVP support.** The fused SDPA kernels are fast for standard attention, but `torch.func.jvp` does not work through the efficient CUDA backend, so a TVM-style forward-mode path has to be implemented or the baseline has to fall back to the math kernel.
+- **Forward-mode AD is practical when the derivative is part of the forward pass.** TVM needs the directional derivative alongside the primal output, so carrying tangents through the kernel avoids building a separate reverse-mode graph and cuts the peak VRAM cost substantially.
+- **Power-of-2 block sizes are not a style preference here.** The Triton kernel relies on tile shapes that map cleanly onto SRAM usage, warp scheduling, and vectorized memory access, so sizes like `64` and `128` compile and run predictably while odd sizes hurt codegen or correctness.
+- **Benchmarks need the baseline defined as carefully as the optimized path.** The repo only produced trustworthy numbers after fixing the Triton compile-time scale bug and forcing the PyTorch reference path onto the math SDPA backend so the JVP comparison was both valid and reproducible.
+
+---
+
 ## References
 
 1. **Terminal Velocity Matching** — Zhou et al. (Luma AI), ICLR 2026. Generalizes flow matching for single-stage generative training. 1.99 FID on ImageNet-256 with 4 NFE.
