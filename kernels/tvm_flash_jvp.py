@@ -16,20 +16,34 @@ Implementation:
 Targets: 65% speedup vs naive PyTorch SDPA, major VRAM reduction
 Validate: amorehead/jvp_flash_attention
 """
+
 import math
 
+import torch
 import triton
 import triton.language as tl
-import torch
 
 BLOCK_SIZE = 64  # Must be power of 2 — do NOT use 72, 96, etc.
 
+
 @triton.jit
 def flash_attention_jvp_kernel(
-    Q, K, V, tQ, tK, tV, O, tO,
-    stride_qm, stride_qk, stride_km, stride_kk,
-    N_CTX: tl.constexpr, HEAD_DIM: tl.constexpr,
-    BLOCK_M: tl.constexpr, BLOCK_N: tl.constexpr,
+    Q,
+    K,
+    V,
+    tQ,
+    tK,
+    tV,
+    O,
+    tO,
+    stride_qm,
+    stride_qk,
+    stride_km,
+    stride_kk,
+    N_CTX: tl.constexpr,
+    HEAD_DIM: tl.constexpr,
+    BLOCK_M: tl.constexpr,
+    BLOCK_N: tl.constexpr,
 ):
     """Fused Flash Attention + JVP with tangent propagation.
 
@@ -62,10 +76,10 @@ def flash_attention_jvp_kernel(
 
     # Running accumulators (online softmax + tangent)
     m_i = tl.full([BLOCK_M], value=-float("inf"), dtype=tl.float32)  # row-max
-    l_i = tl.zeros([BLOCK_M], dtype=tl.float32)                     # row-sum(exp)
+    l_i = tl.zeros([BLOCK_M], dtype=tl.float32)  # row-sum(exp)
     o_acc = tl.zeros([BLOCK_M, HEAD_DIM], dtype=tl.float32)
     to_acc = tl.zeros([BLOCK_M, HEAD_DIM], dtype=tl.float32)
-    rowsum_ts = tl.zeros([BLOCK_M], dtype=tl.float32)               # Σ P·tS
+    rowsum_ts = tl.zeros([BLOCK_M], dtype=tl.float32)  # Σ P·tS
 
     num_blocks_n = tl.cdiv(N_CTX, BLOCK_N)
     for j in range(num_blocks_n):
@@ -87,8 +101,7 @@ def flash_attention_jvp_kernel(
         s_ij = tl.dot(q_block, tl.trans(k_block)) * scale
 
         # tS = (tQ·Kᵀ + Q·tKᵀ) / √d
-        ts_ij = (tl.dot(tq_block, tl.trans(k_block))
-                 + tl.dot(q_block, tl.trans(tk_block))) * scale
+        ts_ij = (tl.dot(tq_block, tl.trans(k_block)) + tl.dot(q_block, tl.trans(tk_block))) * scale
 
         # --- online softmax rescaling ---
         m_ij = tl.max(s_ij, axis=1)
@@ -157,9 +170,18 @@ def flash_attention_jvp(q, k, v, tq, tk, tv):
     grid = (triton.cdiv(N_CTX, BLOCK_SIZE),)
 
     flash_attention_jvp_kernel[grid](
-        q, k, v, tq, tk, tv, o, to_,
-        q.stride(0), q.stride(1),
-        k.stride(0), k.stride(1),
+        q,
+        k,
+        v,
+        tq,
+        tk,
+        tv,
+        o,
+        to_,
+        q.stride(0),
+        q.stride(1),
+        k.stride(0),
+        k.stride(1),
         N_CTX=N_CTX,
         HEAD_DIM=HEAD_DIM,
         BLOCK_M=BLOCK_SIZE,

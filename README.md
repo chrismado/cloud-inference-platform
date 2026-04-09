@@ -68,20 +68,21 @@ The last term requires JVP through the network — implemented via custom Triton
 ## Benchmarks
 
 The repo currently ships the kernel microbenchmark in `kernels/benchmarks.py`.
-The table below reports actual measured p95 latency, throughput, and peak VRAM
-from that benchmark on a single NVIDIA RTX 3090 (`HEAD_DIM=64`, `BLOCK_SIZE=64`,
-`warmup=20`, `iters=200`).
+The table below reports median values from three fresh runs of that benchmark on a
+single NVIDIA GeForce RTX 3090 (`HEAD_DIM=64`, `BLOCK_SIZE=64`, `warmup=20`,
+`iters=200`).
 
 | Seq Len | Triton p95 (ms) | PyTorch p95 (ms) | Triton Throughput (ops/s) | PyTorch Throughput (ops/s) | Triton VRAM (MB) | PyTorch VRAM (MB) | Speedup | VRAM Reduction |
 |---------|-----------------|------------------|---------------------------|----------------------------|------------------|-------------------|---------|----------------|
-| 256 | 0.06 | 1.05 | 17788.78 | 1366.35 | 0.2 | 10.1 | 13.10x | 97.5% |
-| 512 | 0.08 | 1.11 | 13244.61 | 1328.07 | 9.0 | 14.5 | 10.23x | 37.9% |
-| 1024 | 0.11 | 1.13 | 9347.26 | 1256.94 | 9.9 | 30.9 | 7.27x | 68.0% |
-| 2048 | 0.16 | 1.90 | 6643.97 | 760.66 | 11.6 | 93.6 | 7.45x | 87.6% |
-| 4096 | 0.27 | 4.57 | 3829.28 | 242.99 | 15.1 | 339.2 | 15.72x | 95.5% |
+| 256 | 0.06 | 1.11 | 20716.22 | 1186.17 | 0.2 | 10.1 | 17.13x | 97.5% |
+| 512 | 0.08 | 1.24 | 14815.69 | 1298.02 | 0.5 | 14.5 | 10.62x | 96.6% |
+| 1024 | 0.11 | 1.00 | 9990.63 | 1267.91 | 1.0 | 30.9 | 7.33x | 96.8% |
+| 2048 | 0.16 | 1.61 | 6677.54 | 846.65 | 2.0 | 93.6 | 7.39x | 97.9% |
+| 4096 | 0.28 | 3.99 | 3825.00 | 288.16 | 4.0 | 339.2 | 12.65x | 98.8% |
 
-**95.5% peak VRAM reduction at seq len 4096 vs the PyTorch SDPA+jvp baseline.**
-Hardware: NVIDIA RTX 3090.
+**98.8% peak VRAM reduction at seq len 4096 vs the PyTorch SDPA+jvp baseline.**
+Benchmarks measured on an NVIDIA GeForce RTX 3090 with PyTorch 2.11.0+cu128 and
+Python 3.12.2 on April 9, 2026.
 
 ---
 

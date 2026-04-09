@@ -9,10 +9,11 @@ Usage::
     backend = SGLangBackend(model_path="meta-llama/Llama-3-8B-Instruct")
     result = backend.generate("Explain quantum entanglement.")
 """
+
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)

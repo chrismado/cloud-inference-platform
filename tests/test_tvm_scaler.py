@@ -6,10 +6,11 @@ Usage::
     python -m pytest tests/test_tvm_scaler.py -v
     python -m unittest tests.test_tvm_scaler
 """
+
 from __future__ import annotations
 
 import unittest
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import MagicMock
 
 from router.slo_router import SLOConfig, SLORouter
 from router.tvm_scaler import TVMScaler, TVMScalerConfig

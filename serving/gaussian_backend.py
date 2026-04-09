@@ -11,6 +11,7 @@ Usage::
     backend.load_model("/models/garden_scene.ply")
     image = backend.render(camera_pose=pose_4x4, resolution=(1920, 1080))
 """
+
 from __future__ import annotations
 
 import logging
@@ -157,7 +158,7 @@ class GaussianSplatBackend:
     @staticmethod
     def _stub_render(width: int, height: int) -> np.ndarray:
         """Return a gradient test image when gsplat is unavailable."""
-        img = np.zeros((height, width, 3), dtype=np.uint8)
+        img: np.ndarray = np.zeros((height, width, 3), dtype=np.uint8)
         # Simple horizontal gradient for visual confirmation
         grad = np.linspace(0, 255, width, dtype=np.uint8)
         img[:, :, 0] = grad[np.newaxis, :]

@@ -12,13 +12,14 @@ Usage::
     print(tracker.get_compliance_rate())
     print(tracker.get_p95_latency())
 """
+
 from __future__ import annotations
 
 import math
 import threading
 import time
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Deque, Dict, Tuple
 
 
@@ -75,9 +76,7 @@ class SLOTracker:
             self._prune(time.time())
             if not self._observations:
                 return 1.0
-            compliant = sum(
-                1 for _, lat in self._observations if lat <= self.config.p95_target_ms
-            )
+            compliant = sum(1 for _, lat in self._observations if lat <= self.config.p95_target_ms)
             return compliant / len(self._observations)
 
     def get_p95_latency(self) -> float:

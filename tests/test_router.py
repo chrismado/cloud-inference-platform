@@ -6,11 +6,10 @@ Usage::
     python -m pytest tests/test_router.py -v
     python -m unittest tests.test_router
 """
+
 from __future__ import annotations
 
-import time
 import unittest
-from unittest.mock import MagicMock, patch
 
 from router.slo_router import SLOConfig, SLORouter
 
@@ -33,10 +32,7 @@ class FakeRedis:
     def zremrangebyscore(self, key: str, min_score: str, max_score: float) -> int:
         if key not in self._store:
             return 0
-        to_remove = [
-            m for m, score in self._store[key].items()
-            if score <= max_score
-        ]
+        to_remove = [m for m, score in self._store[key].items() if score <= max_score]
         for m in to_remove:
             del self._store[key][m]
         return len(to_remove)
@@ -44,10 +40,7 @@ class FakeRedis:
     def zrangebyscore(self, key: str, min_score: float, max_score: str):
         if key not in self._store:
             return []
-        return [
-            m for m, score in self._store[key].items()
-            if score >= min_score
-        ]
+        return [m for m, score in self._store[key].items() if score >= min_score]
 
 
 class FakePipeline:

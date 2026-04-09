@@ -11,6 +11,7 @@ FID budget:  degradation stays < 2.5 from the 4-step baseline.
 Reference: Zhou et al. (Luma AI), Terminal Velocity Matching, ICLR 2026.
   d/ds f_θ(x_t, t, s) = F_θ(x_t, t, s) + (s-t) · ∂_s F_θ(x_t, t, s)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -18,13 +19,12 @@ from typing import List
 
 from router.slo_router import SLORouter
 
-
 # Ordered highest→lowest quality.  Each entry maps an NFE step count to its
 # expected FID delta relative to the 4-step baseline.
 _DEFAULT_STEP_LADDER: List[tuple[int, float]] = [
-    (4, 0.0),   # full quality
-    (2, 1.2),   # moderate degradation
-    (1, 2.5),   # maximum degradation within FID budget
+    (4, 0.0),  # full quality
+    (2, 1.2),  # moderate degradation
+    (1, 2.5),  # maximum degradation within FID budget
 ]
 
 
@@ -74,10 +74,7 @@ class TVMScaler:
             ``fid_budget``.
         """
         p95 = self.router._get_current_p95_latency()
-        threshold = (
-            self.router.config.p95_target_ms
-            * self.router.config.degradation_threshold
-        )
+        threshold = self.router.config.p95_target_ms * self.router.config.degradation_threshold
 
         if p95 <= threshold:
             # Healthy — full quality

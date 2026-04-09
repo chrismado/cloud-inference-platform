@@ -11,6 +11,7 @@ Usage::
     cache.set("prompt:abc123", result, ttl=60)
     cached = cache.get("prompt:abc123")
 """
+
 from __future__ import annotations
 
 import hashlib

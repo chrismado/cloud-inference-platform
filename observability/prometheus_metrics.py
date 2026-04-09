@@ -12,10 +12,10 @@ Usage::
     metrics.record_gpu_util(0, 0.73)
     metrics.start_server(port=9090)
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +96,8 @@ class PrometheusMetrics:
         """Record a completed inference request."""
         if not _PROM_AVAILABLE:
             return
+        assert self._request_latency is not None
+        assert self._request_count is not None
         self._request_latency.labels(backend=backend, request_type=request_type).observe(latency_ms)
         self._request_count.labels(backend=backend, request_type=request_type, status=status).inc()
 
@@ -103,18 +105,21 @@ class PrometheusMetrics:
         """Update the GPU utilization gauge for a specific device."""
         if not _PROM_AVAILABLE:
             return
+        assert self._gpu_utilization is not None
         self._gpu_utilization.labels(gpu_index=str(gpu_index)).set(utilization)
 
     def record_slo_violation(self, request_type: str) -> None:
         """Increment the SLO violation counter."""
         if not _PROM_AVAILABLE:
             return
+        assert self._slo_violations is not None
         self._slo_violations.labels(request_type=request_type).inc()
 
     def set_active_requests(self, backend: str, count: int) -> None:
         """Set the current in-flight request count for a backend."""
         if not _PROM_AVAILABLE:
             return
+        assert self._active_requests is not None
         self._active_requests.labels(backend=backend).set(count)
 
     def start_server(self, port: int = 9090) -> None:

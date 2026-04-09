@@ -12,11 +12,10 @@ Usage::
 NOTE: This module is intentionally excluded from pytest discovery to avoid
 gevent/SSL conflicts.  Run it directly or via ``locust -f``.
 """
+
 from __future__ import annotations
 
-import json
 import random
-import time
 
 from locust import HttpUser, between, task
 
@@ -134,9 +133,13 @@ if __name__ == "__main__":
     try:
         subprocess.run(
             [
-                sys.executable, "-m", "locust",
-                "-f", __file__,
-                "--host", "http://localhost:8080",
+                sys.executable,
+                "-m",
+                "locust",
+                "-f",
+                __file__,
+                "--host",
+                "http://localhost:8080",
             ],
             check=True,
         )

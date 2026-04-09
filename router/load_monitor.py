@@ -12,12 +12,12 @@ Usage::
     print(monitor.get_available_gpus())
     print(monitor.is_overloaded())
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -106,9 +106,7 @@ class GPULoadMonitor:
                 name = name.decode("utf-8")
             util = pynvml.nvmlDeviceGetUtilizationRates(handle)
             mem = pynvml.nvmlDeviceGetMemoryInfo(handle)
-            temp = pynvml.nvmlDeviceGetTemperature(
-                handle, pynvml.NVML_TEMPERATURE_GPU
-            )
+            temp = pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)
             return GPUStats(
                 index=index,
                 name=name,

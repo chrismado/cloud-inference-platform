@@ -11,6 +11,7 @@ Usage::
     queue.enqueue(InferenceRequest(id="r1", payload={"prompt": "hi"}, priority=1))
     request = queue.dequeue()
 """
+
 from __future__ import annotations
 
 import heapq

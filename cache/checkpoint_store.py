@@ -10,6 +10,7 @@ Usage::
     store.save("model_v1", state_dict)
     loaded = store.load("model_v1")
 """
+
 from __future__ import annotations
 
 import json
@@ -38,6 +39,7 @@ class CheckpointStoreConfig:
     local_dir: str = "./checkpoints"
     s3_bucket: Optional[str] = None
     s3_prefix: str = "checkpoints/"
+    allow_unsafe_deserialization: bool = False
 
 
 class CheckpointStore:
@@ -57,8 +59,7 @@ class CheckpointStore:
         if _BOTO3_AVAILABLE and self.config.s3_bucket:
             try:
                 self._s3 = boto3.client("s3")
-                logger.info("S3 checkpoint sync enabled: s3://%s/%s",
-                            self.config.s3_bucket, self.config.s3_prefix)
+                logger.info("S3 checkpoint sync enabled: s3://%s/%s", self.config.s3_bucket, self.config.s3_prefix)
             except Exception as exc:
                 logger.warning("Failed to initialise S3 client: %s", exc)
 
@@ -105,7 +106,7 @@ class CheckpointStore:
 
         return os.path.abspath(local_path)
 
-    def load(self, name: str) -> Any:
+    def load(self, name: str, allow_unsafe: Optional[bool] = None) -> Any:
         """Load a checkpoint by name.
 
         Looks on local disk first; if missing and S3 is configured,
@@ -120,6 +121,8 @@ class CheckpointStore:
         ------
         FileNotFoundError
             If the checkpoint cannot be found locally or in S3.
+        PermissionError
+            If unsafe pickle deserialization was not explicitly enabled.
         """
         local_path = os.path.join(self.config.local_dir, f"{name}.ckpt")
 
@@ -129,15 +132,20 @@ class CheckpointStore:
                 self._s3.download_file(self.config.s3_bucket, s3_key, local_path)
                 logger.info("Checkpoint downloaded from S3: %s", s3_key)
             except Exception as exc:
-                raise FileNotFoundError(
-                    f"Checkpoint '{name}' not found locally or in S3."
-                ) from exc
+                raise FileNotFoundError(f"Checkpoint '{name}' not found locally or in S3.") from exc
 
         if not os.path.exists(local_path):
             raise FileNotFoundError(f"Checkpoint '{name}' not found at {local_path}")
 
+        allow_unpickle = self.config.allow_unsafe_deserialization if allow_unsafe is None else allow_unsafe
+        if not allow_unpickle:
+            raise PermissionError(
+                "Checkpoint loading uses pickle deserialization and is disabled by default. "
+                "Pass allow_unsafe=True only for checkpoints you trust."
+            )
+
         with open(local_path, "rb") as f:
-            return pickle.load(f)
+            return pickle.load(f)  # nosec B301 - explicit opt-in for trusted checkpoints only
 
     def list_checkpoints(self) -> List[Dict[str, Any]]:
         """List all locally available checkpoints.
@@ -151,11 +159,13 @@ class CheckpointStore:
         for filename in sorted(os.listdir(self.config.local_dir)):
             if filename.endswith(".ckpt"):
                 path = os.path.join(self.config.local_dir, filename)
-                checkpoints.append({
-                    "name": filename.removesuffix(".ckpt"),
-                    "path": path,
-                    "size_mb": os.path.getsize(path) / (1024 * 1024),
-                })
+                checkpoints.append(
+                    {
+                        "name": filename.removesuffix(".ckpt"),
+                        "path": path,
+                        "size_mb": os.path.getsize(path) / (1024 * 1024),
+                    }
+                )
         return checkpoints
 
     def delete(self, name: str) -> bool:

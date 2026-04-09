@@ -10,11 +10,12 @@ Usage::
     backend.optimize(onnx_path="/models/model.onnx")
     result = backend.infer(input_data)
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import numpy as np
 
@@ -79,9 +80,7 @@ class TensorRTBackend:
         try:
             trt_logger = trt.Logger(trt.Logger.WARNING)
             builder = trt.Builder(trt_logger)
-            network = builder.create_network(
-                1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
-            )
+            network = builder.create_network(1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
             parser = trt.OnnxParser(network, trt_logger)
 
             with open(onnx_path, "rb") as f:

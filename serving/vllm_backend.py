@@ -9,6 +9,7 @@ Usage::
     backend = VLLMBackend(model_name="meta-llama/Llama-3-8B-Instruct")
     result = backend.generate("What is Flash Attention?")
 """
+
 from __future__ import annotations
 
 import logging
@@ -112,16 +113,19 @@ class VLLMBackend:
             outputs = self._llm.generate(prompts, params)
             results: List[Dict[str, Any]] = []
             for out in outputs:
-                results.append({
-                    "text": out.outputs[0].text,
-                    "tokens_generated": len(out.outputs[0].token_ids),
-                    "model": self.config.model_name,
-                })
+                results.append(
+                    {
+                        "text": out.outputs[0].text,
+                        "tokens_generated": len(out.outputs[0].token_ids),
+                        "model": self.config.model_name,
+                    }
+                )
             return results
         except Exception as exc:
             logger.error("vLLM batch generation failed: %s", exc)
-            return [{"text": "", "tokens_generated": 0, "model": self.config.model_name, "error": str(exc)}
-                    for _ in prompts]
+            return [
+                {"text": "", "tokens_generated": 0, "model": self.config.model_name, "error": str(exc)} for _ in prompts
+            ]
 
     def get_model_info(self) -> Dict[str, Any]:
         """Return model metadata."""

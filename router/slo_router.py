@@ -5,6 +5,7 @@ with dynamic TVM step-scaling based on p95 latency targets.
 
 Reference: Zhou et al. (Luma AI), Terminal Velocity Matching, ICLR 2026.
 """
+
 from __future__ import annotations
 
 import logging
@@ -13,7 +14,13 @@ import os
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, Literal
+
 import redis
+
+try:
+    import fakeredis
+except ImportError:
+    fakeredis = None
 
 try:
     from fastapi import FastAPI, HTTPException
@@ -43,16 +50,8 @@ class SLORouter:
         self.redis = redis_client
         self._current_steps = config.tvm_steps_normal
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
     def record_latency(self, latency_ms: float) -> None:
-        """Push a latency observation into the Redis rolling window.
-
-        Each entry is stored as a sorted-set member with its timestamp as
-        the score so stale entries can be trimmed efficiently.
-        """
+        """Push a latency observation into the Redis rolling window."""
         now = time.time()
         member = f"{now}:{latency_ms}"
         pipe = self.redis.pipeline()
@@ -61,27 +60,14 @@ class SLORouter:
         pipe.execute()
 
     def get_nfe_steps(self) -> int:
-        """Dynamically return NFE step count based on current server load."""
+        """Return the active NFE step count based on the rolling p95 latency."""
         p95 = self._get_current_p95_latency()
         threshold = self.config.p95_target_ms * self.config.degradation_threshold
-        self._current_steps = (
-            self.config.tvm_steps_degraded if p95 > threshold
-            else self.config.tvm_steps_normal
-        )
+        self._current_steps = self.config.tvm_steps_degraded if p95 > threshold else self.config.tvm_steps_normal
         return self._current_steps
 
-    def route_request(self, request_type: Literal["text", "spatial", "video"]):
-        """Route an inference request to the appropriate backend.
-
-        Routing strategy:
-          - ``text``    → SGLang RadixAttention backend (efficient KV reuse).
-          - ``spatial`` → 3DGS gsplat CUDA renderer.
-          - ``video``   → DiT diffusion pipeline with dynamic TVM step-scaling.
-                          The NFE step count is adjusted in real-time based on
-                          the current p95 latency relative to the SLO target.
-
-        Returns a dict describing the selected backend and its parameters.
-        """
+    def route_request(self, request_type: Literal["text", "spatial", "video"]) -> Dict[str, Any]:
+        """Route an inference request to the appropriate backend."""
         nfe_steps = self.get_nfe_steps()
 
         if request_type == "text":
@@ -107,22 +93,11 @@ class SLORouter:
 
         raise ValueError(f"Unknown request_type: {request_type!r}")
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
     def _get_current_p95_latency(self) -> float:
-        """Compute p95 latency from the Redis rolling window.
-
-        The last ``WINDOW_SECONDS`` of latency observations are kept in a
-        Redis sorted set keyed by timestamp.  We fetch all members still
-        inside the window, extract their latency values and compute the
-        95th-percentile.  If no observations exist we return 0.0 (healthy).
-        """
+        """Compute p95 latency from the Redis rolling window."""
         now = time.time()
         cutoff = now - WINDOW_SECONDS
 
-        # Trim stale entries then fetch remaining ones
         pipe = self.redis.pipeline()
         pipe.zremrangebyscore(LATENCY_KEY, "-inf", cutoff)
         pipe.zrangebyscore(LATENCY_KEY, cutoff, "+inf")
@@ -132,17 +107,13 @@ class SLORouter:
             return 0.0
 
         latencies = sorted(
-            float(m.decode().split(":")[1]) if isinstance(m, bytes) else float(m.split(":")[1])
-            for m in members
+            float(member.decode().split(":")[1]) if isinstance(member, bytes) else float(member.split(":")[1])
+            for member in members
         )
 
-        # p95 index (nearest-rank method)
         idx = int(math.ceil(0.95 * len(latencies))) - 1
         return latencies[max(idx, 0)]
 
-# ======================================================================
-# FastAPI application
-# ======================================================================
 
 def _build_router() -> SLORouter:
     """Create an SLORouter from environment variables or defaults."""
@@ -156,8 +127,20 @@ def _build_router() -> SLORouter:
         redis_client.ping()
         logger.info("Connected to Redis at %s:%d", redis_host, redis_port)
     except redis.ConnectionError:
-        logger.warning("Redis unavailable at %s:%d — latency tracking disabled", redis_host, redis_port)
-        redis_client = redis.Redis(host=redis_host, port=redis_port, decode_responses=False)
+        if fakeredis is not None:
+            logger.warning(
+                "Redis unavailable at %s:%d; using fakeredis fallback for local operation",
+                redis_host,
+                redis_port,
+            )
+            redis_client = fakeredis.FakeRedis(decode_responses=False)
+        else:
+            logger.warning(
+                "Redis unavailable at %s:%d and fakeredis is not installed",
+                redis_host,
+                redis_port,
+            )
+            redis_client = redis.Redis(host=redis_host, port=redis_port, decode_responses=False)
 
     config = SLOConfig(p95_target_ms=p95_target, degradation_threshold=degradation)
     return SLORouter(config, redis_client)
@@ -167,7 +150,7 @@ if _FASTAPI_AVAILABLE:
     app = FastAPI(title="Cloud Inference Platform", version="0.1.0")
 
     class InferenceRequest(BaseModel):
-        request_type: Literal["text", "spatial", "video"]
+        request_type: str
         prompt: str | None = None
         max_tokens: int = 128
         temperature: float = 0.7
@@ -192,7 +175,7 @@ if _FASTAPI_AVAILABLE:
         router = _get_router()
         t_start = time.time()
         try:
-            result = router.route_request(request.request_type)
+            result = router.route_request(request.request_type)  # type: ignore[arg-type]
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 
