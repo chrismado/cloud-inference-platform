@@ -1,0 +1,19 @@
+slo:
+  p95_target_ms: 600
+  p99_target_ms: 1200
+  degradation_threshold: 0.85
+
+tvm:
+  steps_normal: 4
+  steps_degraded: 1
+  fid_budget: 2.5
+
+backends:
+  sglang:
+    radix_attention: true
+    max_batch_size: 32
+    kv_cache_vram_gb: 7
+  vllm:
+    paged_attention: true
+    max_batch_size: 16
+    kv_cache_vram_gb: 21
