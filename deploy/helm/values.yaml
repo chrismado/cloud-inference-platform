@@ -1,0 +1,43 @@
+replicaCount: 2
+
+image:
+  repository: cloud-inference-platform
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+  metricsPort: 9090
+
+resources:
+  limits:
+    cpu: "4"
+    memory: 16Gi
+    nvidia.com/gpu: "1"
+  requests:
+    cpu: "2"
+    memory: 8Gi
+    nvidia.com/gpu: "1"
+
+redis:
+  host: redis
+  port: 6379
+
+slo:
+  p95TargetMs: 600
+  degradationThreshold: 0.85
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetGPUUtilization: 80
+
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
