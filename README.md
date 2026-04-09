@@ -89,36 +89,52 @@ Hardware: NVIDIA RTX 3090.
 
 ```
 cloud-inference-platform/
-├── router/
-│   ├── slo_router.py          # Core SLO-aware routing logic
-│   ├── load_monitor.py        # Real-time GPU utilization tracking
-│   ├── priority_queue.py      # Request priority and batching
-│   └── tvm_scaler.py          # Dynamic NFE step-scaling
-├── serving/
-│   ├── sglang_backend.py      # SGLang RadixAttention integration
-│   ├── vllm_backend.py        # vLLM PagedAttention integration
-│   ├── gaussian_backend.py    # 3DGS spatial serving
-│   └── tensorrt_backend.py    # TensorRT optimized serving
-├── kernels/
-│   ├── tvm_flash_jvp.py       # Triton kernel: Flash Attention JVP for TVM
-│   └── benchmarks.py          # Kernel vs baseline comparison
+├── .gitignore
+├── LICENSE
 ├── cache/
-│   ├── redis_cache.py         # KV cache management
-│   └── checkpoint_store.py    # S3-compatible model checkpoints
-├── observability/
-│   ├── prometheus_metrics.py  # Custom metrics definitions
-│   ├── grafana_dashboard.json # Pre-built Grafana dashboard
-│   └── slo_tracker.py         # SLO compliance tracking
-├── deploy/
-│   ├── helm/                  # Kubernetes Helm chart
-│   ├── docker-compose.yaml    # Local dev setup
-│   └── Dockerfile
-├── tests/
-│   ├── test_router.py
-│   ├── test_tvm_scaler.py
-│   └── locust_load_test.py    # Concurrent load simulation
+│   ├── __init__.py
+│   ├── checkpoint_store.py
+│   └── redis_cache.py
 ├── configs/
-│   └── slo_config.yaml        # SLO targets and scaling thresholds
+│   └── slo_config.yaml
+├── deploy/
+│   ├── Dockerfile
+│   ├── docker-compose.yaml
+│   ├── prometheus.yml
+│   └── helm/
+│       ├── Chart.yaml
+│       ├── templates/
+│       │   ├── deployment.yaml
+│       │   ├── ingress.yaml
+│       │   └── service.yaml
+│       └── values.yaml
+├── kernels/
+│   ├── benchmarks.py
+│   └── tvm_flash_jvp.py
+├── observability/
+│   ├── __init__.py
+│   ├── grafana_dashboard.json
+│   ├── prometheus_metrics.py
+│   └── slo_tracker.py
+├── router/
+│   ├── __init__.py
+│   ├── load_monitor.py
+│   ├── priority_queue.py
+│   ├── slo_router.py
+│   └── tvm_scaler.py
+├── serving/
+│   ├── __init__.py
+│   ├── gaussian_backend.py
+│   ├── sglang_backend.py
+│   ├── tensorrt_backend.py
+│   └── vllm_backend.py
+├── tests/
+│   ├── __init__.py
+│   ├── locust_load_test.py
+│   ├── conftest.py
+│   ├── test_router.py
+│   └── test_tvm_scaler.py
+├── requirements.txt
 └── README.md
 ```
 

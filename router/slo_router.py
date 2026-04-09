@@ -13,7 +13,6 @@ import os
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, Literal
-
 import redis
 
 try:
@@ -140,7 +139,6 @@ class SLORouter:
         # p95 index (nearest-rank method)
         idx = int(math.ceil(0.95 * len(latencies))) - 1
         return latencies[max(idx, 0)]
-
 
 # ======================================================================
 # FastAPI application
