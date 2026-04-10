@@ -41,6 +41,7 @@ def flash_attention_jvp_kernel(
     stride_km,
     stride_kk,
     N_CTX: tl.constexpr,
+    OUTPUT_DTYPE: tl.constexpr,
     HEAD_DIM: tl.constexpr,
     BLOCK_M: tl.constexpr,
     BLOCK_N: tl.constexpr,
@@ -143,8 +144,8 @@ def flash_attention_jvp_kernel(
     o_ptrs = O + offs_m[:, None] * stride_qm + offs_d[None, :] * stride_qk
     to_ptrs = tO + offs_m[:, None] * stride_qm + offs_d[None, :] * stride_qk
     mask_m = offs_m[:, None] < N_CTX
-    tl.store(o_ptrs, o_acc.to(tl.float16), mask=mask_m)
-    tl.store(to_ptrs, to_acc.to(tl.float16), mask=mask_m)
+    tl.store(o_ptrs, o_acc.to(OUTPUT_DTYPE), mask=mask_m)
+    tl.store(to_ptrs, to_acc.to(OUTPUT_DTYPE), mask=mask_m)
 
 
 def flash_attention_jvp(q, k, v, tq, tk, tv):
@@ -186,6 +187,7 @@ def flash_attention_jvp(q, k, v, tq, tk, tv):
         HEAD_DIM=HEAD_DIM,
         BLOCK_M=BLOCK_SIZE,
         BLOCK_N=BLOCK_SIZE,
+        OUTPUT_DTYPE=tl.float16 if q.dtype == torch.float16 else tl.bfloat16 if q.dtype == torch.bfloat16 else tl.float32,
     )
 
     return o, to_
