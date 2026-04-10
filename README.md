@@ -8,7 +8,7 @@ Production ML inference infrastructure for generative video and spatial AI workl
 
 ## Portfolio Context
 
-This repo is part of [Creative AI Workflows](https://github.com/chrismado/creative-ai-workflows), a portfolio showcase connecting generative video, 3D scene review, creative QA, and enterprise deployment.
+This repo is part of [Creative AI Workflows](https://chrismado.github.io/creative-ai-workflows/) ([source](https://github.com/chrismado/creative-ai-workflows)), a portfolio showcase connecting generative video, 3D scene review, creative QA, and enterprise deployment.
 
 In that system, `cloud-inference-platform` is the **enterprise rollout layer**. It answers the question that comes after a great demo: how does a creative AI workflow stay fast, observable, and reliable when a real team starts using it?
 
