@@ -85,8 +85,12 @@ class TestSLORouter(unittest.TestCase):
             tvm_steps_normal=4,
             tvm_steps_degraded=1,
             degradation_threshold=0.85,
+            instance_id="router-test",
         )
         self.router = SLORouter(self.config, self.redis)
+
+    def test_latency_key_is_namespaced(self):
+        self.assertEqual(self.router.latency_key, "slo:router-test:latency_window")
 
     def test_route_text_request(self):
         result = self.router.route_request("text")

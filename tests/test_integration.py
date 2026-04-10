@@ -18,7 +18,10 @@ def _build_fake_router() -> SLORouter:
     if fakeredis is None:
         raise RuntimeError("fakeredis must be installed for integration tests")
     fake_redis = fakeredis.FakeRedis(decode_responses=False)
-    return SLORouter(SLOConfig(p95_target_ms=100.0, degradation_threshold=0.5), fake_redis)
+    return SLORouter(
+        SLOConfig(p95_target_ms=100.0, degradation_threshold=0.5, instance_id="integration-test"),
+        fake_redis,
+    )
 
 
 def test_router_p95_computation_and_priority_queue_order(monkeypatch: pytest.MonkeyPatch) -> None:

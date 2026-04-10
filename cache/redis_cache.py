@@ -23,7 +23,7 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger(__name__)
 
 try:
-    import redis as redis_lib
+    import redis as redis_lib  # type: ignore[import-untyped]
 
     _REDIS_AVAILABLE = True
 except ImportError:
