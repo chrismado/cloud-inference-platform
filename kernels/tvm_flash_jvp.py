@@ -194,7 +194,9 @@ def flash_attention_jvp(
         HEAD_DIM=HEAD_DIM,
         BLOCK_M=BLOCK_SIZE,
         BLOCK_N=BLOCK_SIZE,
-        OUTPUT_DTYPE=tl.float16 if q.dtype == torch.float16 else tl.bfloat16 if q.dtype == torch.bfloat16 else tl.float32,
+        OUTPUT_DTYPE=(
+            tl.float16 if q.dtype == torch.float16 else tl.bfloat16 if q.dtype == torch.bfloat16 else tl.float32
+        ),
     )
 
     return o, to_

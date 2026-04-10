@@ -128,7 +128,9 @@ def _build_router() -> SLORouter:
     p95_target = float(os.environ.get("SLO_P95_TARGET_MS", "600"))
     degradation = float(os.environ.get("SLO_DEGRADATION_THRESHOLD", "0.85"))
     key_prefix = os.environ.get("SLO_KEY_PREFIX", "slo")
-    instance_id = os.environ.get("SLO_INSTANCE_ID") or os.environ.get("HOSTNAME") or os.environ.get("COMPUTERNAME", "default")
+    instance_id = (
+        os.environ.get("SLO_INSTANCE_ID") or os.environ.get("HOSTNAME") or os.environ.get("COMPUTERNAME") or "default"
+    )
 
     try:
         redis_client = redis.Redis(host=redis_host, port=redis_port, decode_responses=False)

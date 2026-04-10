@@ -81,7 +81,7 @@ def _pytorch_sdpa_jvp(
                 .squeeze(0)
             )
 
-    out, tout = torch.func.jvp(_sdpa_fn, (q, k, v), (tq, tk, tv))
+    out, tout = torch.func.jvp(_sdpa_fn, (q, k, v), (tq, tk, tv))  # type: ignore[misc]
     return out, tout
 
 
