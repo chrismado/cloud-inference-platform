@@ -15,7 +15,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, Literal
 
-import redis
+import redis  # type: ignore[import-untyped]
 
 try:
     import fakeredis
@@ -32,7 +32,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-LATENCY_KEY = "slo:latency_window"
+LATENCY_KEY_SUFFIX = "latency_window"
 WINDOW_SECONDS = 60
 
 
@@ -42,6 +42,8 @@ class SLOConfig:
     tvm_steps_normal: int = 4
     tvm_steps_degraded: int = 1
     degradation_threshold: float = 0.85
+    latency_key_prefix: str = "slo"
+    instance_id: str = "default"
 
 
 class SLORouter:
@@ -50,13 +52,17 @@ class SLORouter:
         self.redis = redis_client
         self._current_steps = config.tvm_steps_normal
 
+    @property
+    def latency_key(self) -> str:
+        return f"{self.config.latency_key_prefix}:{self.config.instance_id}:{LATENCY_KEY_SUFFIX}"
+
     def record_latency(self, latency_ms: float) -> None:
         """Push a latency observation into the Redis rolling window."""
         now = time.time()
         member = f"{now}:{latency_ms}"
         pipe = self.redis.pipeline()
-        pipe.zadd(LATENCY_KEY, {member: now})
-        pipe.zremrangebyscore(LATENCY_KEY, "-inf", now - WINDOW_SECONDS)
+        pipe.zadd(self.latency_key, {member: now})
+        pipe.zremrangebyscore(self.latency_key, "-inf", now - WINDOW_SECONDS)
         pipe.execute()
 
     def get_nfe_steps(self) -> int:
@@ -99,8 +105,8 @@ class SLORouter:
         cutoff = now - WINDOW_SECONDS
 
         pipe = self.redis.pipeline()
-        pipe.zremrangebyscore(LATENCY_KEY, "-inf", cutoff)
-        pipe.zrangebyscore(LATENCY_KEY, cutoff, "+inf")
+        pipe.zremrangebyscore(self.latency_key, "-inf", cutoff)
+        pipe.zrangebyscore(self.latency_key, cutoff, "+inf")
         _, members = pipe.execute()
 
         if not members:
@@ -121,6 +127,10 @@ def _build_router() -> SLORouter:
     redis_port = int(os.environ.get("REDIS_PORT", "6379"))
     p95_target = float(os.environ.get("SLO_P95_TARGET_MS", "600"))
     degradation = float(os.environ.get("SLO_DEGRADATION_THRESHOLD", "0.85"))
+    key_prefix = os.environ.get("SLO_KEY_PREFIX", "slo")
+    instance_id = (
+        os.environ.get("SLO_INSTANCE_ID") or os.environ.get("HOSTNAME") or os.environ.get("COMPUTERNAME") or "default"
+    )
 
     try:
         redis_client = redis.Redis(host=redis_host, port=redis_port, decode_responses=False)
@@ -142,7 +152,12 @@ def _build_router() -> SLORouter:
             )
             redis_client = redis.Redis(host=redis_host, port=redis_port, decode_responses=False)
 
-    config = SLOConfig(p95_target_ms=p95_target, degradation_threshold=degradation)
+    config = SLOConfig(
+        p95_target_ms=p95_target,
+        degradation_threshold=degradation,
+        latency_key_prefix=key_prefix,
+        instance_id=instance_id,
+    )
     return SLORouter(config, redis_client)
 
 

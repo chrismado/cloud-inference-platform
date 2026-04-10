@@ -18,12 +18,16 @@ import gc
 import math
 import sys
 from functools import partial
+from typing import Callable
 
 import torch
 import torch.nn.functional as F
 from torch.nn.attention import SDPBackend, sdpa_kernel
 
 from kernels.tvm_flash_jvp import flash_attention_jvp
+
+SixTensors = tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]
+LatencyMetrics = tuple[float, float, float, float]
 
 # ── helpers ────────────────────────────────────────────────────────────
 
@@ -40,10 +44,10 @@ def _peak_vram_mb(device: torch.device) -> float:
     return torch.cuda.max_memory_allocated(device) / (1024 * 1024)
 
 
-def _make_inputs(n_ctx: int, head_dim: int, device: torch.device):
+def _make_inputs(n_ctx: int, head_dim: int, device: torch.device) -> SixTensors:
     """Return (q, k, v, tq, tk, tv) as contiguous fp16 tensors."""
 
-    def _rand():
+    def _rand() -> torch.Tensor:
         return torch.randn(n_ctx, head_dim, device=device, dtype=torch.float16)
 
     return _rand(), _rand(), _rand(), _rand(), _rand(), _rand()
@@ -52,11 +56,18 @@ def _make_inputs(n_ctx: int, head_dim: int, device: torch.device):
 # ── baselines ──────────────────────────────────────────────────────────
 
 
-def _pytorch_sdpa_jvp(q, k, v, tq, tk, tv):
+def _pytorch_sdpa_jvp(
+    q: torch.Tensor,
+    k: torch.Tensor,
+    v: torch.Tensor,
+    tq: torch.Tensor,
+    tk: torch.Tensor,
+    tv: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Naive baseline: SDPA forward + torch.func.jvp for tangent."""
 
     # SDPA expects (batch, heads, seq, dim) — unsqueeze to (1, 1, N, D).
-    def _sdpa_fn(q_, k_, v_):
+    def _sdpa_fn(q_: torch.Tensor, k_: torch.Tensor, v_: torch.Tensor) -> torch.Tensor:
         # Force the math backend because the fused CUDA SDPA kernels do not
         # currently expose the forward AD needed by torch.func.jvp.
         with sdpa_kernel([SDPBackend.MATH]):
@@ -70,14 +81,14 @@ def _pytorch_sdpa_jvp(q, k, v, tq, tk, tv):
                 .squeeze(0)
             )
 
-    out, tout = torch.func.jvp(_sdpa_fn, (q, k, v), (tq, tk, tv))
+    out, tout = torch.func.jvp(_sdpa_fn, (q, k, v), (tq, tk, tv))  # type: ignore[misc]
     return out, tout
 
 
 # ── benchmark runner ───────────────────────────────────────────────────
 
 
-def _bench_fn(fn, warmup: int, iters: int, device: torch.device):
+def _bench_fn(fn: Callable[[], object], warmup: int, iters: int, device: torch.device) -> LatencyMetrics:
     """Time *fn* and return summary latency, throughput, and VRAM metrics."""
     # Warmup
     for _ in range(warmup):
@@ -112,7 +123,7 @@ def run_benchmark(
     head_dim: int,
     warmup: int,
     iters: int,
-):
+) -> None:
     if not torch.cuda.is_available():
         print("ERROR: CUDA not available — benchmarks require a GPU.", file=sys.stderr)
         sys.exit(1)
@@ -120,7 +131,7 @@ def run_benchmark(
     device = torch.device("cuda")
     gpu_name = torch.cuda.get_device_name(device)
 
-    rows: list[dict] = []
+    rows: list[dict[str, float | int]] = []
 
     for n_ctx in seq_lens:
         q, k, v, tq, tk, tv = _make_inputs(n_ctx, head_dim, device)
@@ -191,7 +202,7 @@ def run_benchmark(
 # ── CLI ────────────────────────────────────────────────────────────────
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Flash Attention JVP benchmark")
     parser.add_argument(
         "--seq-lens",

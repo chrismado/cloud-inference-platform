@@ -2,8 +2,8 @@
 3D Gaussian Splatting (3DGS) Serving Backend
 
 Renders novel views from a pre-trained Gaussian Splat scene using the
-gsplat CUDA rasterizer.  Falls back to a numpy stub when gsplat or
-torch are unavailable.
+gsplat CUDA rasterizer.  Falls back to a deterministic gradient stub
+when gsplat or torch are unavailable.
 
 Usage::
 
@@ -125,10 +125,10 @@ class GaussianSplatBackend:
             return self._stub_render(w, h)
 
         try:
-            # Placeholder for actual gsplat rasterization call.
-            # In production this invokes gsplat.rasterize_gaussians().
-            rendered = np.random.randint(0, 255, (h, w, 3), dtype=np.uint8)
-            return rendered
+            # TODO: replace this placeholder with the real gsplat rasterization call.
+            raise NotImplementedError("TODO: replace with actual gsplat rasterization call.")
+        except NotImplementedError:
+            raise
         except Exception as exc:
             logger.error("3DGS render failed: %s", exc)
             return np.zeros((h, w, 3), dtype=np.uint8)

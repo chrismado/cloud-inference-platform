@@ -6,6 +6,24 @@ Production ML inference infrastructure for generative video and spatial AI workl
 
 ---
 
+## Portfolio Context
+
+This repo is part of [Creative AI Workflows](https://chrismado.github.io/creative-ai-workflows/) ([source](https://github.com/chrismado/creative-ai-workflows)), a portfolio showcase connecting generative video, 3D scene review, creative QA, and enterprise deployment.
+
+In that system, `cloud-inference-platform` is the **enterprise rollout layer**. It answers the question that comes after a great demo: how does a creative AI workflow stay fast, observable, and reliable when a real team starts using it?
+
+### Customer-Facing Use Case
+
+An enterprise customer wants to use custom AI media workflows across a team, not just in a one-off prototype. This repo is positioned around adoption constraints: latency, routing, service goals, quality tradeoffs, observability, and operational trust.
+
+### Demo Narrative
+
+- Start with a creative workflow that works well for one user but slows down under team load.
+- Show routing decisions, latency targets, and quality tradeoffs during normal load versus a spike.
+- Close by explaining how operational trust affects creative adoption.
+
+---
+
 ## The Problem
 
 vLLM and SGLang are token-centric. Serving continuous 3D Gaussian Splatting data (spherical harmonics arrays) alongside LLM inference creates GPU memory fragmentation and latency spikes. No existing open-source system handles this multiplexing.

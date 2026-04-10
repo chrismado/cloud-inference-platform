@@ -31,9 +31,15 @@ jobs:
       - name: Install project dependencies
         run: pip install -r requirements.txt || true
       - name: Install test dependencies
-        run: pip install pytest redis fakeredis fastapi httpx pydantic
+        run: pip install pytest pytest-cov redis fakeredis fastapi httpx pydantic
       - name: Run tests
-        run: python -m pytest tests/ -v --tb=short
+        run: python -m pytest tests/ -v --tb=short --cov=. --cov-report=term --cov-report=xml:coverage.xml
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-cloud-inference-platform-py${{ matrix.python-version }}
+          path: coverage.xml
 
   typecheck:
     runs-on: ubuntu-latest

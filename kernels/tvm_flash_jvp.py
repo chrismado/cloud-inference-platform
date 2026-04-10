@@ -28,24 +28,24 @@ BLOCK_SIZE = 64  # Must be power of 2 — do NOT use 72, 96, etc.
 
 @triton.jit
 def flash_attention_jvp_kernel(
-    Q,
-    K,
-    V,
-    tQ,
-    tK,
-    tV,
-    O,
-    tO,
-    stride_qm,
-    stride_qk,
-    stride_km,
-    stride_kk,
-    N_CTX: tl.constexpr,
-    OUTPUT_DTYPE: tl.constexpr,
-    HEAD_DIM: tl.constexpr,
-    BLOCK_M: tl.constexpr,
-    BLOCK_N: tl.constexpr,
-):
+    Q: object,
+    K: object,
+    V: object,
+    tQ: object,
+    tK: object,
+    tV: object,
+    O: object,
+    tO: object,
+    stride_qm: int,
+    stride_qk: int,
+    stride_km: int,
+    stride_kk: int,
+    N_CTX: int,
+    OUTPUT_DTYPE: object,
+    HEAD_DIM: int,
+    BLOCK_M: int,
+    BLOCK_N: int,
+) -> None:
     """Fused Flash Attention + JVP with tangent propagation.
 
     Each program instance handles one BLOCK_M-row tile of the output.
@@ -148,7 +148,14 @@ def flash_attention_jvp_kernel(
     tl.store(to_ptrs, to_acc.to(OUTPUT_DTYPE), mask=mask_m)
 
 
-def flash_attention_jvp(q, k, v, tq, tk, tv):
+def flash_attention_jvp(
+    q: torch.Tensor,
+    k: torch.Tensor,
+    v: torch.Tensor,
+    tq: torch.Tensor,
+    tk: torch.Tensor,
+    tv: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Returns (output, tangent_output) via fused forward + JVP.
 
     Parameters
@@ -187,7 +194,9 @@ def flash_attention_jvp(q, k, v, tq, tk, tv):
         HEAD_DIM=HEAD_DIM,
         BLOCK_M=BLOCK_SIZE,
         BLOCK_N=BLOCK_SIZE,
-        OUTPUT_DTYPE=tl.float16 if q.dtype == torch.float16 else tl.bfloat16 if q.dtype == torch.bfloat16 else tl.float32,
+        OUTPUT_DTYPE=(
+            tl.float16 if q.dtype == torch.float16 else tl.bfloat16 if q.dtype == torch.bfloat16 else tl.float32
+        ),
     )
 
     return o, to_
