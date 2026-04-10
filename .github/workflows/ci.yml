@@ -29,8 +29,8 @@ jobs:
         run: pip install torch --index-url https://download.pytorch.org/whl/cpu
       - name: Install project dependencies
         run: pip install -r requirements.txt || true
-      - name: Install pytest
-        run: pip install pytest
+      - name: Install test dependencies
+        run: pip install pytest redis fakeredis fastapi httpx pydantic
       - name: Run tests
         run: python -m pytest tests/ -v --tb=short
 
