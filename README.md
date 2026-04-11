@@ -6,6 +6,30 @@ Production ML inference infrastructure for generative video and spatial AI workl
 
 ---
 
+## Current Status
+
+This repo is a hybrid of real infrastructure logic and prototype serving layers.
+
+- The routing, latency tracking, TVM step-scaling logic, and test coverage are real and actively validated.
+- The Triton Flash Attention JVP kernel is the deepest technical artifact in the repo.
+- Some serving backends remain prototype or adapter-grade rather than fully production-complete integrations.
+- The most honest way to read the repo today is as an enterprise workflow infrastructure prototype with one genuinely substantive kernel implementation underneath it.
+
+## Validation Snapshot
+
+Verified locally on April 11, 2026:
+
+- `python -m pytest -q` -> `22 passed, 2 skipped`
+- Router integration tests now confirm backend latency is recorded from backend work rather than only routing overhead.
+- TVM ladder tests now cover the mild-overload `2`-step path and severe-overload `1`-step path.
+
+Still prototype or environment-dependent:
+
+- CUDA-gated kernel correctness paths depend on a GPU environment.
+- Several serving backends are still best understood as integration stubs or partial implementations.
+
+---
+
 ## Portfolio Context
 
 This repo is part of [Creative AI Workflows](https://chrismado.github.io/creative-ai-workflows/) ([source](https://github.com/chrismado/creative-ai-workflows)), a portfolio showcase connecting generative video, 3D scene review, creative QA, and enterprise deployment.
