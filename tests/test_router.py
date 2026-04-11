@@ -110,11 +110,11 @@ class TestSLORouter(unittest.TestCase):
         self.assertEqual(result["nfe_steps"], 4)
 
     def test_route_video_request_degraded(self):
-        """When p95 exceeds the threshold the router should degrade to 1 step."""
-        # Inject high-latency observations to trigger degradation
+        """When p95 is far above the threshold the router should hit the minimum rung."""
+        # Inject extreme latency observations to trigger the most aggressive degradation.
         threshold = self.config.p95_target_ms * self.config.degradation_threshold
         for _ in range(100):
-            self.router.record_latency(threshold + 100)
+            self.router.record_latency(threshold + 700)
 
         result = self.router.route_request("video")
         self.assertEqual(result["nfe_steps"], 1)

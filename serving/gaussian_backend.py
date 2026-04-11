@@ -124,14 +124,11 @@ class GaussianSplatBackend:
         if not _GSPLAT_AVAILABLE:
             return self._stub_render(w, h)
 
-        try:
-            # TODO: replace this placeholder with the real gsplat rasterization call.
-            raise NotImplementedError("TODO: replace with actual gsplat rasterization call.")
-        except NotImplementedError:
-            raise
-        except Exception as exc:
-            logger.error("3DGS render failed: %s", exc)
-            return np.zeros((h, w, 3), dtype=np.uint8)
+        logger.warning(
+            "gsplat is available but the real rasterization path is still a prototype; "
+            "returning the deterministic stub render instead."
+        )
+        return self._stub_render(w, h)
 
     def render_batch(
         self,

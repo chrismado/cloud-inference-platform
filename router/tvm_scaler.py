@@ -15,6 +15,7 @@ Reference: Zhou et al. (Luma AI), Terminal Velocity Matching, ICLR 2026.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from typing import List
 
 from router.slo_router import SLORouter
@@ -80,14 +81,19 @@ class TVMScaler:
             # Healthy — full quality
             return self._ladder[0][0]
 
-        # Under pressure — find the most aggressive step reduction
-        # that respects the FID budget.
-        for steps, fid_delta in reversed(self._ladder):
-            if fid_delta <= self.config.fid_budget:
-                return steps
+        degraded_entries = [
+            (steps, fid_delta)
+            for steps, fid_delta in self._ladder[1:]
+            if fid_delta <= self.config.fid_budget
+        ]
+        if not degraded_entries:
+            return self._ladder[0][0]
 
-        # Fallback: minimum steps (last entry is already the smallest).
-        return self._ladder[-1][0]
+        # Scale the degradation level with overload severity instead of
+        # immediately jumping to the minimum-step configuration.
+        overload_ratio = max(0.0, (p95 - threshold) / max(threshold, 1e-6))
+        severity_index = min(int(math.floor(overload_ratio)) if overload_ratio > 0 else 0, len(degraded_entries) - 1)
+        return degraded_entries[severity_index][0]
 
     def estimate_fid(self, nfe_steps: int) -> float:
         """Return the expected FID delta for a given NFE step count.

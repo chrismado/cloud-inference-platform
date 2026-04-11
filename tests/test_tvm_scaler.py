@@ -49,10 +49,9 @@ class TestTVMScaler(unittest.TestCase):
         self.assertEqual(scaler.select_steps(), 4)
 
     def test_select_steps_above_threshold(self):
-        """Above the threshold the scaler should degrade."""
+        """Above the threshold the scaler should degrade to the first lower rung."""
         scaler = self._make_scaler(p95_latency=520.0)
-        steps = scaler.select_steps()
-        self.assertIn(steps, [1, 2])
+        self.assertEqual(scaler.select_steps(), 2)
 
     def test_select_steps_extreme_load(self):
         """Under extreme load the scaler should select minimum steps."""
