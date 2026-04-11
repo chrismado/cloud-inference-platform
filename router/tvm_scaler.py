@@ -14,8 +14,8 @@ Reference: Zhou et al. (Luma AI), Terminal Velocity Matching, ICLR 2026.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 from typing import List
 
 from router.slo_router import SLORouter
@@ -82,9 +82,7 @@ class TVMScaler:
             return self._ladder[0][0]
 
         degraded_entries = [
-            (steps, fid_delta)
-            for steps, fid_delta in self._ladder[1:]
-            if fid_delta <= self.config.fid_budget
+            (steps, fid_delta) for steps, fid_delta in self._ladder[1:] if fid_delta <= self.config.fid_budget
         ]
         if not degraded_entries:
             return self._ladder[0][0]

@@ -103,7 +103,11 @@ class SLORouter:
 
         raise ValueError(f"Unknown request_type: {request_type!r}")
 
-    def process_request(self, request_type: Literal["text", "spatial", "video"], payload: Dict[str, Any]) -> Dict[str, Any]:
+    def process_request(
+        self,
+        request_type: Literal["text", "spatial", "video"],
+        payload: Dict[str, Any],
+    ) -> Dict[str, Any]:
         """Route and execute a request, recording backend latency instead of router overhead."""
         route = self.route_request(request_type)
         start = time.perf_counter()
@@ -143,6 +147,7 @@ class SLORouter:
         if name in self._backend_registry:
             return self._backend_registry[name]
 
+        backend: Any
         if name == "sglang":
             from serving.sglang_backend import SGLangBackend
 

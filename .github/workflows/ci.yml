@@ -31,7 +31,7 @@ jobs:
       - name: Install project dependencies
         run: pip install -r requirements.txt || true
       - name: Install test dependencies
-        run: pip install pytest pytest-cov redis fakeredis fastapi httpx pydantic
+        run: pip install pytest pytest-cov redis fakeredis fastapi httpx numpy pydantic
       - name: Run tests
         run: python -m pytest tests/ -v --tb=short --cov=. --cov-report=term --cov-report=xml:coverage.xml
       - name: Upload coverage artifact

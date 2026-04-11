@@ -170,10 +170,13 @@ class TestSLORouter(unittest.TestCase):
             def load_model(self, model_path):
                 self._model_path = model_path
 
-            def render(self, camera_pose=None, resolution=(512, 512)):
-                import numpy as np
+            class _FakeImage:
+                def __init__(self, resolution):
+                    self.shape = (resolution[1], resolution[0], 3)
 
-                return np.zeros((resolution[1], resolution[0], 3), dtype=np.float32)
+            def render(self, camera_pose=None, resolution=(512, 512)):
+                _ = camera_pose
+                return self._FakeImage(resolution)
 
         self.router._backend_registry["gaussian"] = FakeGaussianBackend()
 
