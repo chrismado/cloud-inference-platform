@@ -103,6 +103,9 @@ def flash_attention_jvp_kernel(
 
         # tS = (tQ·Kᵀ + Q·tKᵀ) / √d
         ts_ij = (tl.dot(tq_block, tl.trans(k_block)) + tl.dot(q_block, tl.trans(tk_block))) * scale
+        valid_n = offs_n < N_CTX
+        s_ij = tl.where(valid_n[None, :], s_ij, -float("inf"))
+        ts_ij = tl.where(valid_n[None, :], ts_ij, 0.0)
 
         # --- online softmax rescaling ---
         m_ij = tl.max(s_ij, axis=1)
@@ -138,7 +141,9 @@ def flash_attention_jvp_kernel(
 
     # Tangent correction: subtract P·V · Σ(P·tS) term
     # tO = (tO_acc - O · rowsum_ts) / l_i
-    to_acc = (to_acc - o_acc * (rowsum_ts[:, None] * inv_l[:, None])) * inv_l[:, None]
+    # Corrected form: normalize the tangent accumulator, then subtract
+    # the softmax correction O * E_P[tS].
+    to_acc = to_acc * inv_l[:, None] - o_acc * (rowsum_ts[:, None] * inv_l[:, None])
 
     # Store O and tO  [BLOCK_M, HEAD_DIM]
     o_ptrs = O + offs_m[:, None] * stride_qm + offs_d[None, :] * stride_qk
