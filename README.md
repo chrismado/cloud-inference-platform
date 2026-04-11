@@ -1,5 +1,8 @@
 # cloud-inference-platform
 
+[![CI](https://github.com/chrismado/cloud-inference-platform/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/chrismado/cloud-inference-platform/actions/workflows/ci.yml)
+[![Portfolio](https://img.shields.io/badge/portfolio-creative%20ai%20workflows-f1b84b?style=flat-square)](https://chrismado.github.io/creative-ai-workflows/)
+
 **SLO-Aware GPU Router with Terminal Velocity Matching Dynamic Step-Scaling**
 
 Production ML inference infrastructure for generative video and spatial AI workloads. Implements an SLO-aware routing layer that multiplexes 3D Gaussian Splatting rendering alongside diffusion model inference, with dynamic NFE step-scaling based on server load using Terminal Velocity Matching (TVM).
@@ -22,6 +25,7 @@ Verified locally on April 11, 2026:
 - `python -m pytest -q` -> `22 passed, 2 skipped`
 - Router integration tests now confirm backend latency is recorded from backend work rather than only routing overhead.
 - TVM ladder tests now cover the mild-overload `2`-step path and severe-overload `1`-step path.
+- GitHub CI is green on `main`
 
 Still prototype or environment-dependent:
 
