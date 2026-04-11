@@ -1,22 +1,21 @@
 from __future__ import annotations
 
 import pytest
+
+pytest.importorskip("fastapi")
+pytest.importorskip("fakeredis")
+
 from fastapi.testclient import TestClient
 
 from router.priority_queue import InferenceRequest, PriorityRequestQueue
 from router.slo_router import SLOConfig, SLORouter, app
 
-try:
-    import fakeredis
-except ImportError:  # pragma: no cover - dependency added in phase 2
-    fakeredis = None
+import fakeredis
 
 pytestmark = pytest.mark.integration
 
 
 def _build_fake_router() -> SLORouter:
-    if fakeredis is None:
-        raise RuntimeError("fakeredis must be installed for integration tests")
     fake_redis = fakeredis.FakeRedis(decode_responses=False)
     return SLORouter(
         SLOConfig(p95_target_ms=100.0, degradation_threshold=0.5, instance_id="integration-test"),

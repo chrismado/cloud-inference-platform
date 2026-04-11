@@ -137,6 +137,59 @@ class TestSLORouter(unittest.TestCase):
         steps = self.router.get_nfe_steps()
         self.assertEqual(steps, 4)
 
+    def test_process_request_records_backend_latency(self):
+        class FakeSGLangBackend:
+            def generate(self, prompt, max_tokens=128, temperature=0.7):
+                return {
+                    "prompt": prompt,
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                    "tokens": ["hello"],
+                }
+
+        self.router._backend_registry["sglang"] = FakeSGLangBackend()
+
+        result = self.router.process_request(
+            "text",
+            {"prompt": "hello", "max_tokens": 32, "temperature": 0.2},
+        )
+
+        self.assertEqual(result["routing"]["backend"], "sglang")
+        self.assertEqual(result["backend_result"]["prompt"], "hello")
+        self.assertGreaterEqual(result["latency_ms"], 0.0)
+        self.assertGreaterEqual(self.router._get_current_p95_latency(), 0.0)
+
+    def test_process_request_spatial_path_uses_backend_result(self):
+        class FakeGaussianBackend:
+            def __init__(self):
+                self._model_path = None
+
+            def health_check(self):
+                return {"model_path": self._model_path}
+
+            def load_model(self, model_path):
+                self._model_path = model_path
+
+            def render(self, camera_pose=None, resolution=(512, 512)):
+                import numpy as np
+
+                return np.zeros((resolution[1], resolution[0], 3), dtype=np.float32)
+
+        self.router._backend_registry["gaussian"] = FakeGaussianBackend()
+
+        result = self.router.process_request(
+            "spatial",
+            {
+                "model_path": "scene.splat",
+                "resolution": [320, 180],
+                "camera_pose": {"eye": [0, 0, 4]},
+            },
+        )
+
+        self.assertEqual(result["routing"]["backend"], "gaussian")
+        self.assertEqual(result["backend_result"]["image_shape"], [180, 320, 3])
+        self.assertEqual(result["backend_result"]["model_path"], "scene.splat")
+
 
 if __name__ == "__main__":
     unittest.main()
