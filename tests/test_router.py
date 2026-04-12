@@ -193,6 +193,20 @@ class TestSLORouter(unittest.TestCase):
         self.assertEqual(result["backend_result"]["image_shape"], [180, 320, 3])
         self.assertEqual(result["backend_result"]["model_path"], "scene.splat")
 
+    def test_process_request_spatial_path_rejects_missing_model_path(self):
+        from serving.gaussian_backend import GaussianSplatBackend
+
+        self.router._backend_registry["gaussian"] = GaussianSplatBackend()
+
+        with self.assertRaises(ValueError):
+            self.router.process_request(
+                "spatial",
+                {
+                    "model_path": "missing-scene.ply",
+                    "resolution": [320, 180],
+                },
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

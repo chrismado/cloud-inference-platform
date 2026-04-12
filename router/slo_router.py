@@ -177,7 +177,10 @@ class SLORouter:
             backend = self._get_backend("gaussian")
             model_path = payload.get("model_path")
             if model_path and backend.health_check().get("model_path") != model_path:
-                backend.load_model(model_path)
+                try:
+                    backend.load_model(model_path)
+                except FileNotFoundError as exc:
+                    raise ValueError(str(exc)) from exc
             image = backend.render(
                 camera_pose=payload.get("camera_pose"),
                 resolution=tuple(payload.get("resolution", [512, 512])),

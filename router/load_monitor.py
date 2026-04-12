@@ -157,7 +157,13 @@ class AsyncGPULoadMonitor:
 
     def is_overloaded(self) -> bool:
         """Check overload based on the most recent snapshot."""
-        return self._monitor.is_overloaded()
+        if not self.latest:
+            return self._monitor.is_overloaded()
+
+        return all(
+            gpu.utilization_pct >= self._monitor.overload_threshold
+            for gpu in self.latest.values()
+        )
 
     async def _poll_loop(self) -> None:
         while True:

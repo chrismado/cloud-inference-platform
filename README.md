@@ -22,9 +22,10 @@ This repo is a hybrid of real infrastructure logic and prototype serving layers.
 
 Verified locally on April 11, 2026:
 
-- `python -m pytest -q` -> `22 passed, 2 skipped`
+- The local `pytest` path is green, including router, integration, backend-health, and TVM scaling coverage.
 - Router integration tests now confirm backend latency is recorded from backend work rather than only routing overhead.
 - TVM ladder tests now cover the mild-overload `2`-step path and severe-overload `1`-step path.
+- Backend health checks now expose when spatial rendering is still running in deterministic or prototype stub mode.
 - GitHub CI is green on `main`
 
 Still prototype or environment-dependent:
@@ -177,9 +178,12 @@ cloud-inference-platform/
 │   └── vllm_backend.py
 ├── tests/
 │   ├── __init__.py
-│   ├── locust_load_test.py
 │   ├── conftest.py
+│   ├── locust_load_test.py
+│   ├── test_backend_health.py
+│   ├── test_integration.py
 │   ├── test_router.py
+│   ├── test_tvm_flash_jvp.py
 │   └── test_tvm_scaler.py
 ├── requirements.txt
 └── README.md
@@ -226,4 +230,4 @@ python -m kernels.benchmarks --seq-len 1024 --head-dim 64
 
 ---
 
-*Built on RTX 4090 + RTX 3090. Targeting Luma AI, Decart, Pika Labs inference engineering roles.*
+*Built to explore the infrastructure questions that appear when creative AI workflows have to stay fast, observable, and trustworthy under team load.*

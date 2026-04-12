@@ -2,8 +2,8 @@
 3D Gaussian Splatting (3DGS) Serving Backend
 
 Renders novel views from a pre-trained Gaussian Splat scene using the
-gsplat CUDA rasterizer.  Falls back to a deterministic gradient stub
-when gsplat or torch are unavailable.
+gsplat CUDA rasterizer. Falls back to a deterministic gradient stub when
+gsplat or torch are unavailable.
 
 Usage::
 
@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -36,7 +37,7 @@ try:
     _GSPLAT_AVAILABLE = True
 except ImportError:
     _GSPLAT_AVAILABLE = False
-    logger.warning("gsplat not installed — GaussianSplatBackend will use stub rendering.")
+    logger.warning("gsplat not installed - GaussianSplatBackend will use stub rendering.")
 
 
 @dataclass
@@ -55,7 +56,7 @@ class GaussianSplatBackend:
     Parameters
     ----------
     config : GaussianSplatConfig
-        Rendering configuration.  If not supplied a default is created.
+        Rendering configuration. If not supplied a default is created.
     """
 
     def __init__(self, config: Optional[GaussianSplatConfig] = None) -> None:
@@ -75,22 +76,28 @@ class GaussianSplatBackend:
         model_path : str
             Path to the 3DGS model file.
         """
-        self._model_path = model_path
+        path = Path(model_path)
+        if not path.exists():
+            self._model_data = None
+            self._model_path = None
+            raise FileNotFoundError(f"3DGS model path does not exist: {model_path}")
+
+        self._model_path = str(path)
 
         if not _TORCH_AVAILABLE:
-            logger.warning("torch unavailable — loading stub model data.")
-            self._model_data = {"stub": True, "path": model_path}
+            logger.warning("torch unavailable - loading stub model data.")
+            self._model_data = {"stub": True, "path": str(path)}
             return
 
         try:
             # In a real deployment this would parse the PLY / checkpoint
             # and populate means3D, opacities, scales, rotations, sh_coeffs.
             self._model_data = {
-                "path": model_path,
+                "path": str(path),
                 "loaded": True,
                 "n_gaussians": 0,
             }
-            logger.info("3DGS model loaded from %s", model_path)
+            logger.info("3DGS model loaded from %s", path)
         except Exception as exc:
             logger.error("Failed to load 3DGS model: %s", exc)
             self._model_data = None
@@ -100,25 +107,11 @@ class GaussianSplatBackend:
         camera_pose: Any,
         resolution: Optional[Tuple[int, int]] = None,
     ) -> np.ndarray:
-        """Render a novel view from the loaded Gaussian Splat scene.
-
-        Parameters
-        ----------
-        camera_pose : array-like
-            4x4 camera-to-world transformation matrix.
-        resolution : tuple[int, int], optional
-            (width, height) of the output image.  Defaults to
-            ``config.default_resolution``.
-
-        Returns
-        -------
-        np.ndarray
-            Rendered RGB image as a ``(H, W, 3)`` uint8 array.
-        """
+        """Render a novel view from the loaded Gaussian Splat scene."""
         w, h = resolution or self.config.default_resolution
 
         if self._model_data is None:
-            logger.warning("No model loaded — returning blank frame.")
+            logger.warning("No model loaded - returning blank frame.")
             return np.zeros((h, w, 3), dtype=np.uint8)
 
         if not _GSPLAT_AVAILABLE:
@@ -140,12 +133,20 @@ class GaussianSplatBackend:
 
     def health_check(self) -> Dict[str, Any]:
         """Return backend health status."""
+        if self._model_data is None:
+            render_mode = "unloaded"
+        elif not _GSPLAT_AVAILABLE:
+            render_mode = "deterministic_stub"
+        else:
+            render_mode = "prototype_stub"
+
         return {
             "backend": "gaussian_splat",
             "gsplat_available": _GSPLAT_AVAILABLE,
             "torch_available": _TORCH_AVAILABLE,
             "model_loaded": self._model_data is not None,
             "model_path": self._model_path,
+            "render_mode": render_mode,
         }
 
     # ------------------------------------------------------------------
@@ -156,7 +157,6 @@ class GaussianSplatBackend:
     def _stub_render(width: int, height: int) -> np.ndarray:
         """Return a gradient test image when gsplat is unavailable."""
         img: np.ndarray = np.zeros((height, width, 3), dtype=np.uint8)
-        # Simple horizontal gradient for visual confirmation
         grad = np.linspace(0, 255, width, dtype=np.uint8)
         img[:, :, 0] = grad[np.newaxis, :]
         return img
