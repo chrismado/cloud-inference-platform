@@ -156,6 +156,10 @@ class SLORouter:
             from serving.gaussian_backend import GaussianSplatBackend
 
             backend = GaussianSplatBackend()
+        elif name == "dit_tvm":
+            from serving.dit_tvm_backend import DiTTVMBackend
+
+            backend = DiTTVMBackend()
         else:
             raise ValueError(f"Unknown backend: {name}")
 
@@ -192,16 +196,13 @@ class SLORouter:
             }
 
         if backend_name == "dit_tvm":
+            backend = self._get_backend("dit_tvm")
             nfe_steps = int(route.get("nfe_steps") or self.config.tvm_steps_normal)
-            # The repo does not yet expose a real video backend, so keep this
-            # prototype path explicit while still timing real work rather than a
-            # dict lookup.
-            time.sleep(0.002 * max(nfe_steps, 1))
-            return {
-                "engine": route["engine"],
-                "nfe_steps": nfe_steps,
-                "status": "prototype_execution",
-            }
+            return backend.execute(
+                prompt=payload.get("prompt", ""),
+                num_frames=payload.get("num_frames", 16),
+                nfe_steps=nfe_steps,
+            )
 
         raise ValueError(f"Unsupported backend: {backend_name}")
 

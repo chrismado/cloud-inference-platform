@@ -207,6 +207,29 @@ class TestSLORouter(unittest.TestCase):
                 },
             )
 
+    def test_process_request_video_uses_explicit_backend(self):
+        class FakeDiTBackend:
+            def execute(self, prompt="", num_frames=16, nfe_steps=4):
+                return {
+                    "engine": "TVM-DiT",
+                    "prompt": prompt,
+                    "num_frames": num_frames,
+                    "nfe_steps": nfe_steps,
+                    "status": "prototype_execution",
+                    "execution_mode": "explicit_backend_stub",
+                }
+
+        self.router._backend_registry["dit_tvm"] = FakeDiTBackend()
+
+        result = self.router.process_request(
+            "video",
+            {"prompt": "generate", "num_frames": 12},
+        )
+
+        self.assertEqual(result["routing"]["backend"], "dit_tvm")
+        self.assertEqual(result["backend_result"]["execution_mode"], "explicit_backend_stub")
+        self.assertEqual(result["backend_result"]["num_frames"], 12)
+
 
 if __name__ == "__main__":
     unittest.main()

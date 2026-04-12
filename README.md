@@ -26,6 +26,7 @@ Verified locally on April 11, 2026:
 - Router integration tests now confirm backend latency is recorded from backend work rather than only routing overhead.
 - TVM ladder tests now cover the mild-overload `2`-step path and severe-overload `1`-step path.
 - Backend health checks now expose when spatial rendering is still running in deterministic or prototype stub mode.
+- The video route now uses an explicit prototype backend instead of hiding simulated execution inside the router.
 - GitHub CI is green on `main`
 
 Still prototype or environment-dependent:
@@ -172,6 +173,7 @@ cloud-inference-platform/
 │   └── tvm_scaler.py
 ├── serving/
 │   ├── __init__.py
+│   ├── dit_tvm_backend.py
 │   ├── gaussian_backend.py
 │   ├── sglang_backend.py
 │   ├── tensorrt_backend.py
